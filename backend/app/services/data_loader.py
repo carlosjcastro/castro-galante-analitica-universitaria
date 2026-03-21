@@ -70,7 +70,7 @@ class DataRepository:
         return result
 
     def get_dataframe(self) -> pd.DataFrame:
-        return self.df.copy()
+        return self.df
 
     def get_metadata(self) -> dict[str, Any]:
         years = sorted(self.df['anio'].dropna().astype(int).unique().tolist())
