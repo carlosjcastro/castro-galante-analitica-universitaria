@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Iterable
-
 import pandas as pd
 
 from app.services.data_loader import get_repository
@@ -39,16 +37,6 @@ class DashboardService:
         data = self._apply_list_filter(data, "rama_id", rama_ids)
         return data
 
-    def get_filters(self) -> dict:
-        return {
-            "anios": sorted(self.df["anio"].dropna().astype(int).unique().tolist()),
-            "gestiones": self._options("gestion_id", "gestion"),
-            "generos": self._options("genero_id", "genero"),
-            "regiones": self._options("region_id", "region"),
-            "disciplinas": self._options("disciplina_id", "disciplina"),
-            "ramas": self._options("rama_id", "rama"),
-        }
-
     def _options(self, id_column: str, label_column: str) -> list[dict]:
         table = (
             self.df[[id_column, label_column]]
@@ -61,9 +49,20 @@ class DashboardService:
             for _, row in table.iterrows()
         ]
 
+    def get_filters(self) -> dict:
+        return {
+            "anios": sorted(self.df["anio"].dropna().astype(int).unique().tolist()),
+            "gestiones": self._options("gestion_id", "gestion"),
+            "generos": self._options("genero_id", "genero"),
+            "regiones": self._options("region_id", "region"),
+            "disciplinas": self._options("disciplina_id", "disciplina"),
+            "ramas": self._options("rama_id", "rama"),
+        }
+
     def get_kpis(self, **filters) -> dict:
         data = self.filter_data(**filters)
         salarios_validos = data["salario"].dropna()
+
         return {
             "registros": int(len(data)),
             "graduados": int(data["id"].nunique()),
@@ -160,6 +159,7 @@ class DashboardService:
         for column in ["tasa_empleo_formal", "salario_mediano"]:
             min_value = table[column].min()
             max_value = table[column].max()
+
             if pd.isna(min_value) or pd.isna(max_value) or min_value == max_value:
                 table[f"{column}_normalizado"] = 100.0
             else:
@@ -169,6 +169,7 @@ class DashboardService:
             0.55 * table["tasa_empleo_formal_normalizado"]
             + 0.45 * table["salario_mediano_normalizado"]
         )
+
         table["tasa_empleo_formal"] = (table["tasa_empleo_formal"] * 100).round(2)
         table["salario_mediano"] = table["salario_mediano"].round(2)
         table["indice_oportunidad"] = table["indice_oportunidad"].round(2)
