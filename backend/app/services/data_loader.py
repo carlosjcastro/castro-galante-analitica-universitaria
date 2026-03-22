@@ -32,19 +32,18 @@ COLUMNAS_NECESARIAS = [
     "region_id",
 ]
 
-DTYPES_CSV = {
-    "id": "Int32",
-    "anio": "Int16",
-    "anionac": "Int16",
-    "anioegreso": "Int16",
-    "salario": "float32",
-    "rama_id": "Int16",
-    "disciplina_id": "Int32",
-    "tipo_titulo_id": "Int16",
-    "gestion_id": "Int16",
-    "genero_id": "Int16",
-    "region_id": "Int16",
-}
+COLUMNAS_ENTERAS = [
+    "id",
+    "anio",
+    "anionac",
+    "anioegreso",
+    "rama_id",
+    "disciplina_id",
+    "tipo_titulo_id",
+    "gestion_id",
+    "genero_id",
+    "region_id",
+]
 
 
 class DataRepository:
@@ -62,8 +61,15 @@ class DataRepository:
         df = pd.read_csv(
             self.csv_path,
             usecols=lambda col: col in COLUMNAS_NECESARIAS,
-            dtype=DTYPES_CSV,
+            low_memory=False,
         )
+
+        for column in COLUMNAS_ENTERAS:
+            if column in df.columns:
+                df[column] = pd.to_numeric(df[column], errors="coerce")
+
+        if "salario" in df.columns:
+            df["salario"] = pd.to_numeric(df["salario"], errors="coerce").astype("float32")
 
         dictionaries = self._load_dictionaries()
         df = self._enrich_dataset(df, dictionaries)
@@ -86,68 +92,74 @@ class DataRepository:
             df["empleo_formal"] = df["empleo_formal"].astype("int8")
 
         if "edad_al_egreso" in df.columns:
-            df["edad_al_egreso"] = df["edad_al_egreso"].astype("float32")
+            df["edad_al_egreso"] = pd.to_numeric(
+                df["edad_al_egreso"], errors="coerce"
+            ).astype("float32")
 
         return df
 
     def _load_dictionaries(self) -> dict[str, pd.DataFrame]:
-        required_sheets = list(COLUMNAS_DICCIONARIO.keys())
         excel = pd.ExcelFile(self.dictionary_path)
-
         dictionaries: dict[str, pd.DataFrame] = {}
-        for sheet in required_sheets:
-            if sheet not in excel.sheet_names:
+
+        for sheet_name, (id_column, label_column) in COLUMNAS_DICCIONARIO.items():
+            if sheet_name not in excel.sheet_names:
                 continue
 
-            id_column, label_column = COLUMNAS_DICCIONARIO[sheet]
             table = pd.read_excel(
                 excel,
-                sheet_name=sheet,
+                sheet_name=sheet_name,
                 usecols=[id_column, label_column],
             ).drop_duplicates()
 
-            dictionaries[sheet] = table
+            dictionaries[sheet_name] = table
 
         return dictionaries
 
-def _enrich_dataset(
-    self,
-    df: pd.DataFrame,
-    dictionaries: dict[str, pd.DataFrame],
-) -> pd.DataFrame:
-    result = df
+    def _enrich_dataset(
+        self,
+        df: pd.DataFrame,
+        dictionaries: dict[str, pd.DataFrame],
+    ) -> pd.DataFrame:
+        result = df
 
-    for sheet_name, (id_column, label_column) in COLUMNAS_DICCIONARIO.items():
-        if sheet_name not in dictionaries or id_column not in result.columns:
-            continue
+        for sheet_name, (id_column, label_column) in COLUMNAS_DICCIONARIO.items():
+            if sheet_name not in dictionaries or id_column not in result.columns:
+                continue
 
-        table = dictionaries[sheet_name]
-        result = result.merge(table, how="left", on=id_column, copy=False)
+            table = dictionaries[sheet_name]
+            result = result.merge(table, how="left", on=id_column, copy=False)
 
-    result["empleo_formal"] = result["salario"].notna().astype("int8")
+        result["empleo_formal"] = result["salario"].notna().astype("int8")
 
-    anioegreso = pd.to_numeric(result["anioegreso"], errors="coerce")
-    anionac = pd.to_numeric(result["anionac"], errors="coerce")
+        anioegreso = pd.to_numeric(result["anioegreso"], errors="coerce")
+        anionac = pd.to_numeric(result["anionac"], errors="coerce")
 
-    result["edad_al_egreso"] = (anioegreso - anionac).astype("float32")
+        result["edad_al_egreso"] = (anioegreso - anionac).astype("float32")
 
-    bins = [0, 24, 29, 34, 44, np.inf]
-    labels = ["Hasta 24", "25-29", "30-34", "35-44", "45 o más"]
+        bins = [0, 24, 29, 34, 44, np.inf]
+        labels = ["Hasta 24", "25-29", "30-34", "35-44", "45 o más"]
 
-    result["tramo_edad_egreso"] = pd.cut(
-        result["edad_al_egreso"],
-        bins=bins,
-        labels=labels,
-        include_lowest=True,
-    )
+        result["tramo_edad_egreso"] = pd.cut(
+            result["edad_al_egreso"],
+            bins=bins,
+            labels=labels,
+            include_lowest=True,
+        )
 
-    return result
+        return result
 
     def get_dataframe(self) -> pd.DataFrame:
         return self.df
 
     def get_metadata(self) -> dict[str, Any]:
-        years = sorted(self.df["anio"].dropna().astype(int).unique().tolist())
+        years = sorted(
+            pd.to_numeric(self.df["anio"], errors="coerce")
+            .dropna()
+            .astype(int)
+            .unique()
+            .tolist()
+        )
 
         return {
             "registros": int(len(self.df)),
