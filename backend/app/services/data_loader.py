@@ -33,10 +33,10 @@ COLUMNAS_NECESARIAS = [
 ]
 
 DTYPES_CSV = {
-    "id": "int32",
-    "anio": "int16",
-    "anionac": "int16",
-    "anioegreso": "int16",
+    "id": "Int32",
+    "anio": "Int16",
+    "anionac": "Int16",
+    "anioegreso": "Int16",
     "salario": "float32",
     "rama_id": "Int16",
     "disciplina_id": "Int32",
@@ -110,34 +110,38 @@ class DataRepository:
 
         return dictionaries
 
-    def _enrich_dataset(
-        self,
-        df: pd.DataFrame,
-        dictionaries: dict[str, pd.DataFrame],
-    ) -> pd.DataFrame:
-        result = df
+def _enrich_dataset(
+    self,
+    df: pd.DataFrame,
+    dictionaries: dict[str, pd.DataFrame],
+) -> pd.DataFrame:
+    result = df
 
-        for sheet_name, (id_column, label_column) in COLUMNAS_DICCIONARIO.items():
-            if sheet_name not in dictionaries or id_column not in result.columns:
-                continue
+    for sheet_name, (id_column, label_column) in COLUMNAS_DICCIONARIO.items():
+        if sheet_name not in dictionaries or id_column not in result.columns:
+            continue
 
-            table = dictionaries[sheet_name]
-            result = result.merge(table, how="left", on=id_column, copy=False)
+        table = dictionaries[sheet_name]
+        result = result.merge(table, how="left", on=id_column, copy=False)
 
-        result["empleo_formal"] = result["salario"].notna().astype("int8")
-        result["edad_al_egreso"] = (result["anioegreso"] - result["anionac"]).astype("float32")
+    result["empleo_formal"] = result["salario"].notna().astype("int8")
 
-        bins = [0, 24, 29, 34, 44, np.inf]
-        labels = ["Hasta 24", "25-29", "30-34", "35-44", "45 o más"]
+    anioegreso = pd.to_numeric(result["anioegreso"], errors="coerce")
+    anionac = pd.to_numeric(result["anionac"], errors="coerce")
 
-        result["tramo_edad_egreso"] = pd.cut(
-            result["edad_al_egreso"],
-            bins=bins,
-            labels=labels,
-            include_lowest=True,
-        )
+    result["edad_al_egreso"] = (anioegreso - anionac).astype("float32")
 
-        return result
+    bins = [0, 24, 29, 34, 44, np.inf]
+    labels = ["Hasta 24", "25-29", "30-34", "35-44", "45 o más"]
+
+    result["tramo_edad_egreso"] = pd.cut(
+        result["edad_al_egreso"],
+        bins=bins,
+        labels=labels,
+        include_lowest=True,
+    )
+
+    return result
 
     def get_dataframe(self) -> pd.DataFrame:
         return self.df
