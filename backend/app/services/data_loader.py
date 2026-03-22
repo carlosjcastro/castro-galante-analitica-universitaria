@@ -10,14 +10,36 @@ import pandas as pd
 from app.core.config import CSV_PATH, DICTIONARY_PATH
 
 COLUMNAS_DICCIONARIO = {
-    'cod_rama': ('rama_id', 'rama'),
-    'cod_disciplina': ('disciplina_id', 'disciplina'),
-    'cod_titulo': ('tipo_titulo_id', 'tipo_titulo'),
-    'cod_gestion': ('gestion_id', 'gestion'),
-    'cod_genero': ('genero_id', 'genero'),
-    'cod_region': ('region_id', 'region'),
-    'cod_tamaño': ('tamaño_id', 'tamaño'),
-    'cod_letra': ('letra_id', 'letra'),
+    'cod_rama':       ('rama_id',        'rama'),
+    'cod_disciplina': ('disciplina_id',  'disciplina'),
+    'cod_titulo':     ('tipo_titulo_id', 'tipo_titulo'),
+    'cod_gestion':    ('gestion_id',     'gestion'),
+    'cod_genero':     ('genero_id',      'genero'),
+    'cod_region':     ('region_id',      'region'),
+    'cod_tamaño':     ('tamaño_id',      'tamaño'),
+    'cod_letra':      ('letra_id',       'letra'),
+}
+
+COLUMNAS_NECESARIAS = [
+    'id', 'anio', 'anionac', 'anioegreso', 'salario',
+    'gestion_id', 'genero_id', 'region_id', 'disciplina_id', 'rama_id',
+    'tipo_titulo_id', 'tamaño_id', 'letra_id',
+]
+
+DTYPE_MAP = {
+    'id':            'int32',
+    'anio':          'int16',
+    'anionac':       'Int16',
+    'anioegreso':    'Int16',
+    'salario':       'float32',
+    'gestion_id':    'Int8',
+    'genero_id':     'Int8',
+    'region_id':     'Int8',
+    'disciplina_id': 'Int16',
+    'rama_id':       'Int8',
+    'tipo_titulo_id':'Int8',
+    'tamaño_id':     'Int8',
+    'letra_id':      'Int8',
 }
 
 
@@ -33,42 +55,39 @@ class DataRepository:
         if not self.dictionary_path.exists():
             raise FileNotFoundError(f'No se encontró el diccionario en {self.dictionary_path}')
 
-        df = pd.read_csv(self.csv_path)
+        df = pd.read_csv(
+        self.csv_path,
+        dtype=DTYPE_MAP,
+        usecols=lambda col: col in COLUMNAS_NECESARIAS,
+        )
+
         dictionaries = self._load_dictionaries()
         df = self._enrich_dataset(df, dictionaries)
+        del dictionaries
 
-        # Strings normales — se usan en groupby, no pueden ser category
         cols_string = ['rama', 'disciplina', 'gestion', 'genero', 'region']
         for col in cols_string:
             if col in df.columns:
                 df[col] = df[col].fillna('Sin dato')
 
-        # Categoricas seguras — no se usan como clave de groupby
         cols_categoricas = ['tipo_titulo', 'tamaño', 'letra', 'tramo_edad_egreso']
         for col in cols_categoricas:
             if col in df.columns:
                 df[col] = df[col].fillna('Sin dato').astype('category')
 
-        # Enteros pequeños
         for col in ['rama_id', 'disciplina_id', 'gestion_id', 'genero_id', 'region_id',
                     'tipo_titulo_id', 'tamaño_id', 'letra_id', 'empleo_formal']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], downcast='integer')
 
-        # Años como int16
-        for col in ['anio', 'anionac', 'anioegreso']:
-            if col in df.columns:
-                df[col] = df[col].astype('Int16')
-
-        # Salario como float32
-        if 'salario' in df.columns:
-            df['salario'] = df['salario'].astype('float32')
-
         return df
 
     def _load_dictionaries(self) -> dict[str, pd.DataFrame]:
-        excel = pd.ExcelFile(self.dictionary_path)
-        return {sheet: pd.read_excel(excel, sheet_name=sheet) for sheet in excel.sheet_names}
+        with pd.ExcelFile(self.dictionary_path) as excel:
+            return {
+                sheet: pd.read_excel(excel, sheet_name=sheet)
+                for sheet in excel.sheet_names
+            }
 
     def _enrich_dataset(self, df: pd.DataFrame, dictionaries: dict[str, pd.DataFrame]) -> pd.DataFrame:
         for sheet_name, (id_column, label_column) in COLUMNAS_DICCIONARIO.items():
@@ -81,7 +100,7 @@ class DataRepository:
         df['edad'] = df['anio'] - df['anionac']
         df['edad_al_egreso'] = df['anioegreso'] - df['anionac']
 
-        bins = [0, 24, 29, 34, 44, np.inf]
+        bins   = [0, 24, 29, 34, 44, np.inf]
         labels = ['Hasta 24', '25-29', '30-34', '35-44', '45 o más']
         df['tramo_edad_egreso'] = pd.cut(
             df['edad_al_egreso'], bins=bins, labels=labels, include_lowest=True
@@ -95,14 +114,14 @@ class DataRepository:
     def get_metadata(self) -> dict[str, Any]:
         years = sorted(self.df['anio'].dropna().astype(int).unique().tolist())
         return {
-            'registros': int(len(self.df)),
-            'columnas': int(self.df.shape[1]),
-            'anios': years,
-            'anio_min': min(years),
-            'anio_max': max(years),
+            'registros':   int(len(self.df)),
+            'columnas':    int(self.df.shape[1]),
+            'anios':       years,
+            'anio_min':    min(years),
+            'anio_max':    max(years),
             'disciplinas': int(self.df['disciplina'].nunique(dropna=True)),
-            'ramas': int(self.df['rama'].nunique(dropna=True)),
-            'regiones': int(self.df['region'].nunique(dropna=True)),
+            'ramas':       int(self.df['rama'].nunique(dropna=True)),
+            'regiones':    int(self.df['region'].nunique(dropna=True)),
         }
 
 
