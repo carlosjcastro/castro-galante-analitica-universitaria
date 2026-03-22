@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useTransition,
 } from "react";
 import {
   Bar,
@@ -56,12 +57,7 @@ const TOOLTIP_STYLE = {
 const CHART_MARGIN_DEFAULT = { top: 8, right: 12, left: 0, bottom: 0 };
 const CHART_MARGIN_VERTICAL = { top: 8, right: 12, left: 24, bottom: 0 };
 
-const SECTION_ANIMATION_CLASS =
-  "transition-all duration-700 ease-out will-change-transform";
-
-const SuspenseFallbackBlock = memo(function SuspenseFallbackBlock({
-  className = "",
-}) {
+const Block = memo(function Block({ className = "" }) {
   return (
     <div
       className={`min-h-[120px] border border-slate-200 bg-white ${className}`}
@@ -150,79 +146,78 @@ function useInView({
   once = true,
 } = {}) {
   const ref = useRef(null);
-  const [isInView, setIsInView] = useState(false);
+  const [inView, setInView] = useState(false);
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || (once && isInView)) return undefined;
+    if (!node || (once && inView)) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setIsInView(true);
+          setInView(true);
           if (once) observer.disconnect();
         } else if (!once) {
-          setIsInView(false);
+          setInView(false);
         }
       },
       { rootMargin, threshold },
     );
 
     observer.observe(node);
-
     return () => observer.disconnect();
-  }, [isInView, once, rootMargin, threshold]);
+  }, [inView, once, rootMargin, threshold]);
 
-  return { ref, isInView };
+  return { ref, inView };
 }
 
-const LazySection = memo(function LazySection({
+const DeferredSection = memo(function DeferredSection({
   children,
+  fallback,
   className = "",
-  fallback = null,
 }) {
-  const { ref, isInView } = useInView();
+  const { ref, inView } = useInView();
 
   return (
     <div
       ref={ref}
       className={[
-        SECTION_ANIMATION_CLASS,
-        isInView
+        "transition-all duration-700 ease-out will-change-transform",
+        inView
           ? "translate-y-0 opacity-100"
           : "translate-y-4 opacity-0 motion-reduce:translate-y-0 motion-reduce:opacity-100",
         className,
       ].join(" ")}
     >
-      {isInView ? children : fallback}
+      {inView ? (
+        <Suspense fallback={fallback ?? <Block />}>{children}</Suspense>
+      ) : (
+        (fallback ?? <Block />)
+      )}
     </div>
   );
 });
 
-const LazyChart = memo(function LazyChart({
-  children,
-  height = "h-[320px]",
-  fallback,
-}) {
-  const { ref, isInView } = useInView();
-
+const LazyChart = memo(function LazyChart({ children, height = "h-[320px]" }) {
+  const { ref, inView } = useInView();
   return (
     <div ref={ref} className={`h-full w-full ${height}`}>
-      {isInView
-        ? children
-        : fallback || <div className="h-full w-full bg-slate-50" />}
+      {inView ? (
+        children
+      ) : (
+        <div className="h-full w-full animate-pulse bg-slate-50" />
+      )}
     </div>
   );
 });
 
 const HeroSection = memo(function HeroSection({ meta }) {
-  const registrosValue = useMemo(
-    () => meta?.registros?.toLocaleString("es-AR") || "...",
+  const registros = useMemo(
+    () => meta?.registros?.toLocaleString("es-AR") ?? "...",
     [meta?.registros],
   );
-
-  const periodoValue = useMemo(
-    () => (meta ? `${meta.anio_min} - ${meta.anio_max}` : "..."),
+  const periodo = useMemo(
+    () => (meta ? `${meta.anio_min} – ${meta.anio_max}` : "..."),
     [meta],
   );
 
@@ -233,25 +228,22 @@ const HeroSection = memo(function HeroSection({ meta }) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
             Observatorio de inserción universitaria
           </p>
-
           <h2 className="mt-3 max-w-4xl text-2xl font-semibold leading-tight tracking-tight text-slate-950 md:text-4xl">
             Inserción laboral universitaria con foco analítico en brechas,
             regiones y oportunidades
           </h2>
-
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
             Plataforma de lectura comparativa sobre empleo formal, salario y
             desempeño por disciplina, gestión y territorio.
           </p>
-
           <div className="mt-5 grid grid-cols-2 border border-slate-200 md:grid-cols-4">
-            <IntroMetric label="Registros" value={registrosValue} />
-            <IntroMetric label="Período" value={periodoValue} />
+            <IntroMetric label="Registros" value={registros} />
+            <IntroMetric label="Período" value={periodo} />
             <IntroMetric
               label="Disciplinas"
-              value={meta?.disciplinas || "..."}
+              value={meta?.disciplinas ?? "..."}
             />
-            <IntroMetric label="Regiones" value={meta?.regiones || "..."} />
+            <IntroMetric label="Regiones" value={meta?.regiones ?? "..."} />
           </div>
         </div>
 
@@ -262,14 +254,13 @@ const HeroSection = memo(function HeroSection({ meta }) {
           <h3 className="mt-2 text-base font-semibold tracking-tight text-slate-950">
             Resumen del conjunto analizado
           </h3>
-
           <dl className="mt-4">
-            <DataRow label="Registros" value={registrosValue} />
-            <DataRow label="Columnas" value={meta?.columnas || "..."} />
-            <DataRow label="Años observados" value={periodoValue} />
-            <DataRow label="Disciplinas" value={meta?.disciplinas || "..."} />
-            <DataRow label="Ramas" value={meta?.ramas || "..."} />
-            <DataRow label="Regiones" value={meta?.regiones || "..."} />
+            <DataRow label="Registros" value={registros} />
+            <DataRow label="Columnas" value={meta?.columnas ?? "..."} />
+            <DataRow label="Años observados" value={periodo} />
+            <DataRow label="Disciplinas" value={meta?.disciplinas ?? "..."} />
+            <DataRow label="Ramas" value={meta?.ramas ?? "..."} />
+            <DataRow label="Regiones" value={meta?.regiones ?? "..."} />
           </dl>
         </aside>
       </div>
@@ -285,18 +276,12 @@ const TemporalSection = memo(function TemporalSection({ yearly }) {
         title="Evolución general"
         description="Seguimiento anual del empleo formal y del salario mediano para el subconjunto filtrado."
       />
-
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartPanel
           title="Tasa de empleo formal por año"
           subtitle="Serie anual del subconjunto visible"
         >
-          <LazyChart
-            height="h-[320px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={yearly} margin={CHART_MARGIN_DEFAULT}>
                 <CartesianGrid {...GRID_STYLE} />
@@ -335,12 +320,7 @@ const TemporalSection = memo(function TemporalSection({ yearly }) {
           title="Salario mediano por año"
           subtitle="Serie anual del segmento seleccionado"
         >
-          <LazyChart
-            height="h-[320px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={yearly} margin={CHART_MARGIN_DEFAULT}>
                 <CartesianGrid {...GRID_STYLE} />
@@ -385,7 +365,7 @@ const ComparativeSection = memo(function ComparativeSection({
   regionEmployment,
   regionSalary,
 }) {
-  const managementTooltipFormatter = useCallback((value, name) => {
+  const managementFmt = useCallback((value, name) => {
     if (name === "Empleo formal") return formatPercent(value);
     return formatCurrency(value);
   }, []);
@@ -397,18 +377,12 @@ const ComparativeSection = memo(function ComparativeSection({
         title="Gestión, género y territorio"
         description="Diferencias institucionales y regionales dentro del subconjunto actualmente seleccionado."
       />
-
       <div className="grid gap-4 xl:grid-cols-2">
         <ChartPanel
           title="Gestión: empleo y salario"
           subtitle="Comparación entre gestión estatal y privada"
         >
-          <LazyChart
-            height="h-[320px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={management} margin={CHART_MARGIN_DEFAULT}>
                 <CartesianGrid {...GRID_STYLE} />
@@ -433,7 +407,7 @@ const ComparativeSection = memo(function ComparativeSection({
                 />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  formatter={managementTooltipFormatter}
+                  formatter={managementFmt}
                 />
                 <Legend />
                 <Bar
@@ -461,12 +435,7 @@ const ComparativeSection = memo(function ComparativeSection({
           title="Género según gestión"
           subtitle="Empleo formal por género"
         >
-          <LazyChart
-            height="h-[320px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={genderManagement} margin={CHART_MARGIN_DEFAULT}>
                 <CartesianGrid {...GRID_STYLE} />
@@ -502,12 +471,7 @@ const ComparativeSection = memo(function ComparativeSection({
           title="Empleo formal por región"
           subtitle="Ordenamiento territorial"
         >
-          <LazyChart
-            height="h-[320px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={regionEmployment}
@@ -548,12 +512,7 @@ const ComparativeSection = memo(function ComparativeSection({
           title="Salario mediano por región"
           subtitle="Comparación territorial de ingresos"
         >
-          <LazyChart
-            height="h-[320px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={regionSalary}
@@ -599,7 +558,7 @@ const OpportunitySection = memo(function OpportunitySection({
   topOpportunityTable,
   scatter,
 }) {
-  const scatterTooltipFormatter = useCallback((value, name) => {
+  const scatterFmt = useCallback((value, name) => {
     if (name === "tasa_empleo_formal") return formatPercent(value);
     if (name === "salario_mediano") return formatCurrency(value);
     return value;
@@ -619,12 +578,7 @@ const OpportunitySection = memo(function OpportunitySection({
           subtitle="Ranking sintético del subconjunto"
           height="h-[360px]"
         >
-          <LazyChart
-            height="h-[360px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={topOpportunityIndex}
@@ -663,12 +617,7 @@ const OpportunitySection = memo(function OpportunitySection({
           subtitle="Cruce entre empleo, salario y volumen de graduados"
           height="h-[360px]"
         >
-          <LazyChart
-            height="h-[360px]"
-            fallback={
-              <div className="h-full w-full animate-pulse bg-slate-100" />
-            }
-          >
+          <LazyChart height="h-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={CHART_MARGIN_DEFAULT}>
                 <CartesianGrid {...GRID_STYLE} />
@@ -692,7 +641,7 @@ const OpportunitySection = memo(function OpportunitySection({
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
                   cursor={{ stroke: "#cbd5e1", strokeDasharray: "3 3" }}
-                  formatter={scatterTooltipFormatter}
+                  formatter={scatterFmt}
                 />
                 <Scatter
                   data={scatter}
@@ -700,10 +649,10 @@ const OpportunitySection = memo(function OpportunitySection({
                   animationDuration={700}
                   animationEasing="ease-out"
                 >
-                  {scatter.map((entry, index) => (
+                  {scatter.map((entry, i) => (
                     <Cell
-                      key={`${entry.disciplina}-${index}`}
-                      fill={SCATTER_COLORS[index % SCATTER_COLORS.length]}
+                      key={`${entry.disciplina}-${i}`}
+                      fill={SCATTER_COLORS[i % SCATTER_COLORS.length]}
                     />
                   ))}
                 </Scatter>
@@ -713,17 +662,11 @@ const OpportunitySection = memo(function OpportunitySection({
         </ChartPanel>
       </div>
 
-      <LazySection
-        fallback={<SuspenseFallbackBlock className="min-h-[320px]" />}
-      >
+      <DeferredSection fallback={<Block className="min-h-[320px]" />}>
         <div className="border border-slate-300 bg-white">
-          <Suspense
-            fallback={<SuspenseFallbackBlock className="min-h-[320px]" />}
-          >
-            <OpportunityTable rows={topOpportunityTable} />
-          </Suspense>
+          <OpportunityTable rows={topOpportunityTable} />
         </div>
-      </LazySection>
+      </DeferredSection>
     </section>
   );
 });
@@ -739,41 +682,27 @@ export default function DashboardPage() {
     dashboard,
   } = useDashboardData();
 
+  const [isPending, startTransition] = useTransition();
+
   const handleFilterChange = useCallback(
     (key, value) => {
-      setFilters((current) => {
-        if (current[key] === value) return current;
-        return { ...current, [key]: value };
+      startTransition(() => {
+        setFilters((prev) =>
+          prev[key] === value ? prev : { ...prev, [key]: value },
+        );
       });
     },
     [setFilters],
   );
 
-  const yearlyData = useMemo(
-    () => dashboard?.yearly ?? [],
-    [dashboard?.yearly],
-  );
-  const managementData = useMemo(
-    () => dashboard?.management ?? [],
-    [dashboard?.management],
-  );
-  const genderManagementData = useMemo(
-    () => dashboard?.genderManagement ?? [],
-    [dashboard?.genderManagement],
-  );
-  const regionEmploymentData = useMemo(
-    () => dashboard?.regionEmployment ?? [],
-    [dashboard?.regionEmployment],
-  );
-  const regionSalaryData = useMemo(
-    () => dashboard?.regionSalary ?? [],
-    [dashboard?.regionSalary],
-  );
-  const scatterData = useMemo(
-    () => dashboard?.scatter ?? [],
-    [dashboard?.scatter],
-  );
-  const kpis = useMemo(() => dashboard?.kpis ?? [], [dashboard?.kpis]);
+  const yearly = dashboard?.yearly ?? [];
+  const management = dashboard?.management ?? [];
+  const genderManagement = dashboard?.genderManagement ?? [];
+  const regionEmployment = dashboard?.regionEmployment ?? [];
+  const regionSalary = dashboard?.regionSalary ?? [];
+  const scatter = dashboard?.scatter ?? [];
+  const kpis = dashboard?.kpis ?? null;
+
   const topOpportunityIndex = useMemo(
     () => (dashboard?.opportunityIndex ?? []).slice(0, 10),
     [dashboard?.opportunityIndex],
@@ -785,53 +714,43 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <LazySection
-        fallback={<SuspenseFallbackBlock className="min-h-[260px]" />}
-      >
+      {/* Hero */}
+      <DeferredSection fallback={<Block className="min-h-[260px]" />}>
         <HeroSection meta={meta} />
-      </LazySection>
+      </DeferredSection>
 
-      <LazySection
-        fallback={<SuspenseFallbackBlock className="min-h-[180px]" />}
-      >
-        <section className="bg-white px-4 py-4 md:px-5 md:py-5">
-          <Suspense
-            fallback={<SuspenseFallbackBlock className="min-h-[180px]" />}
-          >
-            <FilterPanel
-              filters={filters}
-              onChange={handleFilterChange}
-              options={filterOptions}
-            />
-          </Suspense>
+      {/* Filtros */}
+      <DeferredSection fallback={<Block className="min-h-[180px]" />}>
+        <section
+          className={`bg-white px-4 py-4 md:px-5 md:py-5 transition-opacity duration-200 ${isPending ? "opacity-50 pointer-events-none" : ""}`}
+        >
+          <FilterPanel
+            filters={filters}
+            onChange={handleFilterChange}
+            options={filterOptions}
+          />
         </section>
-      </LazySection>
+      </DeferredSection>
 
+      {/* Error */}
       {error ? (
         <div className="border border-rose-200 bg-rose-50 px-5 py-4 text-sm leading-6 text-rose-700">
           {error}
         </div>
       ) : null}
 
+      {/* Contenido principal */}
       {loading ? (
-        <Suspense
-          fallback={<SuspenseFallbackBlock className="min-h-[180px]" />}
-        >
+        <Suspense fallback={<Block className="min-h-[180px]" />}>
           <Loader message="Preparando tablero..." />
         </Suspense>
       ) : (
         <>
-          <LazySection
-            fallback={<SuspenseFallbackBlock className="min-h-[140px]" />}
-          >
-            <Suspense
-              fallback={<SuspenseFallbackBlock className="min-h-[140px]" />}
-            >
-              <KPIGrid kpis={kpis} />
-            </Suspense>
-          </LazySection>
+          <DeferredSection fallback={<Block className="min-h-[140px]" />}>
+            <KPIGrid kpis={kpis} />
+          </DeferredSection>
 
-          <LazySection
+          <DeferredSection
             fallback={
               <div className="grid gap-4 xl:grid-cols-2">
                 <ChartSkeleton />
@@ -839,10 +758,10 @@ export default function DashboardPage() {
               </div>
             }
           >
-            <TemporalSection yearly={yearlyData} />
-          </LazySection>
+            <TemporalSection yearly={yearly} />
+          </DeferredSection>
 
-          <LazySection
+          <DeferredSection
             fallback={
               <div className="grid gap-4 xl:grid-cols-2">
                 <ChartSkeleton />
@@ -853,14 +772,14 @@ export default function DashboardPage() {
             }
           >
             <ComparativeSection
-              management={managementData}
-              genderManagement={genderManagementData}
-              regionEmployment={regionEmploymentData}
-              regionSalary={regionSalaryData}
+              management={management}
+              genderManagement={genderManagement}
+              regionEmployment={regionEmployment}
+              regionSalary={regionSalary}
             />
-          </LazySection>
+          </DeferredSection>
 
-          <LazySection
+          <DeferredSection
             fallback={
               <div className="grid gap-4 xl:grid-cols-[1.18fr_0.82fr]">
                 <ChartSkeleton height="h-[360px]" />
@@ -871,9 +790,9 @@ export default function DashboardPage() {
             <OpportunitySection
               topOpportunityIndex={topOpportunityIndex}
               topOpportunityTable={topOpportunityTable}
-              scatter={scatterData}
+              scatter={scatter}
             />
-          </LazySection>
+          </DeferredSection>
         </>
       )}
     </div>

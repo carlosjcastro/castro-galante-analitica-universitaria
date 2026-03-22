@@ -32,10 +32,6 @@ const initialDashboard = {
   scatter: [],
 };
 
-function ensureArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-
 export function useDashboardData() {
   const [meta, setMeta] = useState(null);
   const [filterOptions, setFilterOptions] = useState({
@@ -53,20 +49,20 @@ export function useDashboardData() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    const { signal } = controller;
 
     async function loadBase() {
       try {
         setBaseLoading(true);
         setError("");
 
-        const metaResponse = await fetchMeta();
-        if (cancelled) return;
+        const [metaResponse, filtersResponse] = await Promise.all([
+          fetchMeta(signal),
+          fetchFilters(signal),
+        ]);
+
         setMeta(metaResponse);
-
-        const filtersResponse = await fetchFilters();
-        if (cancelled) return;
-
         setFilterOptions({
           anios: filtersResponse?.anios || [],
           gestiones: filtersResponse?.gestiones || [],
@@ -76,149 +72,81 @@ export function useDashboardData() {
           ramas: filtersResponse?.ramas || [],
         });
       } catch (err) {
-        if (!cancelled) {
+        if (err.name !== "CanceledError") {
           console.error("Error cargando metadatos iniciales:", err);
-          setError("No se pudieron cargar los metadatos iniciales del proyecto.");
+          setError(
+            "No se pudieron cargar los metadatos iniciales del proyecto.",
+          );
         }
       } finally {
-        if (!cancelled) {
-          setBaseLoading(false);
-        }
+        setBaseLoading(false);
       }
     }
 
     loadBase();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function safeFetch(requestFn, fallback, label) {
-      try {
-        const response = await requestFn();
-        return response;
-      } catch (err) {
-        console.error(`Error cargando ${label}:`, err);
-        return fallback;
-      }
-    }
+    const controller = new AbortController();
+    const { signal } = controller;
 
     async function loadDashboard() {
       try {
         setDashboardLoading(true);
         setError("");
 
-        const selectedYear = Number(filters.anio || 2021);
+        const anio = Number(filters.anio || 2021);
 
-        const kpis = await safeFetch(
-          () => fetchKpis(filters),
-          null,
-          "KPIs",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          kpis: kpis || null,
-        }));
+        const [
+          kpis,
+          yearly,
+          management,
+          genderManagement,
+          regionEmployment,
+          regionSalary,
+          opportunityIndex,
+          scatter,
+        ] = await Promise.all([
+          fetchKpis(filters, signal),
+          fetchYearlyEvolution(filters, signal),
+          fetchManagementSummary(anio, signal),
+          fetchGenderManagementSummary(anio, signal),
+          fetchRegionEmployment(anio, signal),
+          fetchRegionSalary(anio, signal),
+          fetchOpportunityIndex(anio, 1000, signal),
+          fetchScatterDisciplines(anio, 1000, signal),
+        ]);
 
-        const yearly = await safeFetch(
-          () => fetchYearlyEvolution(filters),
-          [],
-          "evolución anual",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          yearly: ensureArray(yearly),
-        }));
-
-        const management = await safeFetch(
-          () => fetchManagementSummary(selectedYear),
-          [],
-          "resumen por gestión",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          management: ensureArray(management),
-        }));
-
-        const genderManagement = await safeFetch(
-          () => fetchGenderManagementSummary(selectedYear),
-          [],
-          "resumen por género y gestión",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          genderManagement: ensureArray(genderManagement),
-        }));
-
-        const regionEmployment = await safeFetch(
-          () => fetchRegionEmployment(selectedYear),
-          [],
-          "empleo por región",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          regionEmployment: ensureArray(regionEmployment),
-        }));
-
-        const regionSalary = await safeFetch(
-          () => fetchRegionSalary(selectedYear),
-          [],
-          "salario por región",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          regionSalary: ensureArray(regionSalary),
-        }));
-
-        const opportunityIndex = await safeFetch(
-          () => fetchOpportunityIndex(selectedYear),
-          [],
-          "índice de oportunidad",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          opportunityIndex: ensureArray(opportunityIndex),
-        }));
-
-        const scatter = await safeFetch(
-          () => fetchScatterDisciplines(selectedYear),
-          [],
-          "scatter de disciplinas",
-        );
-        if (cancelled) return;
-        setDashboard((current) => ({
-          ...current,
-          scatter: ensureArray(scatter),
-        }));
+        setDashboard({
+          kpis: kpis ?? null,
+          yearly: Array.isArray(yearly) ? yearly : [],
+          management: Array.isArray(management) ? management : [],
+          genderManagement: Array.isArray(genderManagement)
+            ? genderManagement
+            : [],
+          regionEmployment: Array.isArray(regionEmployment)
+            ? regionEmployment
+            : [],
+          regionSalary: Array.isArray(regionSalary) ? regionSalary : [],
+          opportunityIndex: Array.isArray(opportunityIndex)
+            ? opportunityIndex
+            : [],
+          scatter: Array.isArray(scatter) ? scatter : [],
+        });
       } catch (err) {
-        if (!cancelled) {
+        if (err.name !== "CanceledError") {
           console.error("Error cargando tablero:", err);
           setError("No se pudieron cargar los datos del tablero.");
           setDashboard(initialDashboard);
         }
       } finally {
-        if (!cancelled) {
-          setDashboardLoading(false);
-        }
+        setDashboardLoading(false);
       }
     }
 
     loadDashboard();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [
     filters.anio,
     filters.gestionId,
