@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="logo-wb.png" alt="Logo Castro Galante Analítica Universitaria" width="400" />
+</p>
 
 # Castro Galante - Analítica Universitaria
 
