@@ -15,4 +15,7 @@ FRONTEND_ORIGINS = [
     'http://127.0.0.1:4173',
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://castro-galante-analitica.carlosjcastrog.com/",
+    "https://carlosjcastrog.com/",
+    "https://www.carlosjcastrog.com/"
 ]
