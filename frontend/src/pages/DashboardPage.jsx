@@ -217,7 +217,7 @@ const HeroSection = memo(function HeroSection({ meta }) {
     [meta?.registros],
   );
   const periodo = useMemo(
-    () => (meta ? `${meta.anio_min} – ${meta.anio_max}` : "..."),
+    () => (meta ? `${meta.anio_min} - ${meta.anio_max}` : "..."),
     [meta],
   );
 
