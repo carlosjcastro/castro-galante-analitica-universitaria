@@ -7,7 +7,7 @@ CSV_PATH = DATA_DIR / 'base_araucano.csv'
 DICTIONARY_PATH = DATA_DIR / 'diccionario_araucano.xlsx'
 
 API_PREFIX = '/api/v1'
-APP_NAME = 'Radar Universitario Argentino API'
+APP_NAME = 'Castro-Galante Analítica Universitaria API'
 APP_VERSION = '1.0.0'
 
 _default_origins = ','.join([

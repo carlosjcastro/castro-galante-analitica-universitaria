@@ -35,7 +35,7 @@ app.include_router(dashboard_router, prefix=API_PREFIX)
 @app.get('/')
 def read_root() -> dict:
     return {
-        'message': 'Radar Universitario Argentino API',
+        'message': 'Castro-Galante Analítica Universitaria API',
         'docs': '/docs',
         'api_prefix': API_PREFIX,
     }
