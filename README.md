@@ -357,4 +357,3 @@ Todos los endpoints tienen el prefijo `/api/v1`.
 ## Licencia
 
 MIT
->>>>>>> 1deb02faa9071558a5a27815538ab08ed796d5b3
