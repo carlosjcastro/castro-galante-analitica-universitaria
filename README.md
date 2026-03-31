@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Castro Galante - Analítica Universitaria - Full Stack
 
 Aplicación full stack construida a partir del análisis original en notebook. El proyecto transforma el trabajo práctico en un producto web con frontend en React + Vite + Tailwind CSS y backend en FastAPI.
