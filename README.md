@@ -55,8 +55,7 @@ castro-galante-analitica-universitaria-fullstack/
 ```bash
 cd backend
 python -m venv .venv
-source .venv/Scripts/activate  # Git Bash
-# o .venv\Scripts\Activate.ps1 en PowerShell
+source .venv/Scripts/activate
 pip install -r requirements.txt
 fastapi dev app/main.py
 ```
