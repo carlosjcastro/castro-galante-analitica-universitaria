@@ -221,12 +221,10 @@ La API quedará disponible en `http://localhost:8000`.
 La documentación interactiva en `http://localhost:8000/docs`.
 
 ### Frontend
->>>>>>> 1deb02faa9071558a5a27815538ab08ed796d5b3
 
 ```bash
 cd frontend
 npm install
-<<<<<<< HEAD
 npm run dev
 ```
 
