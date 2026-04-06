@@ -1,3 +1,6 @@
+<img src="logo-wb.png" alt="Logo Castro Galante Analítica Universitaria" width="200" />
+
+
 # Castro Galante Analítica Universitaria - Full Stack
 
 Plataforma de análisis y visualización de la inserción laboral formal de graduados universitarios en Argentina. Construida sobre un notebook de análisis original, el proyecto transforma ese trabajo en un producto web completo con frontend en React y backend en FastAPI.
