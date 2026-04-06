@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Castro Galante - Analítica Universitaria - Full Stack
 
 Aplicación full stack construida a partir del análisis original en notebook. El proyecto transforma el trabajo práctico en un producto web con frontend en React + Vite + Tailwind CSS y backend en FastAPI.
@@ -56,8 +55,7 @@ castro-galante-analitica-universitaria-fullstack/
 ```bash
 cd backend
 python -m venv .venv
-source .venv/Scripts/activate  # Git Bash
-# o .venv\Scripts\Activate.ps1 en PowerShell
+source .venv/Scripts/activate
 pip install -r requirements.txt
 fastapi dev app/main.py
 ```
@@ -222,12 +220,10 @@ La API quedará disponible en `http://localhost:8000`.
 La documentación interactiva en `http://localhost:8000/docs`.
 
 ### Frontend
->>>>>>> 1deb02faa9071558a5a27815538ab08ed796d5b3
 
 ```bash
 cd frontend
 npm install
-<<<<<<< HEAD
 npm run dev
 ```
 
@@ -358,4 +354,3 @@ Todos los endpoints tienen el prefijo `/api/v1`.
 ## Licencia
 
 MIT
->>>>>>> 1deb02faa9071558a5a27815538ab08ed796d5b3
