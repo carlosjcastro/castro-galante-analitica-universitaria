@@ -19,7 +19,6 @@
   },
   "devDependencies": {
     "@swc/core": "^1.15.24",
-    "@swc/core-win32-x64-msvc": "^1.15.24",
     "@tailwindcss/vite": "^4",
     "@vitejs/plugin-react-swc": "^4.3.0",
     "tailwindcss": "^4",
