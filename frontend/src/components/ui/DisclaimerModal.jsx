@@ -51,9 +51,9 @@ export default function DisclaimerModal({ githubUrl = "#" }) {
                 Los notebooks originales no están disponibles aquí
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Para evitar costos de infraestructura excesivos en el servidor, el
-                acceso a los notebooks de análisis en GitHub no está habilitado
-                desde esta aplicación.
+                Para evitar costos de infraestructura excesivos en el servidor,
+                el acceso a los notebooks de análisis en GitHub no está
+                habilitado desde esta aplicación.
               </p>
             </div>
           </div>
