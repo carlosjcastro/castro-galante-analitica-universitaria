@@ -13,12 +13,15 @@
     "lucide-react": "^0",
     "react": "^19",
     "react-dom": "^19",
+    "react-is": "^19.2.5",
     "react-router-dom": "^7",
     "recharts": "^3"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.24",
+    "@swc/core-win32-x64-msvc": "^1.15.24",
     "@tailwindcss/vite": "^4",
-    "@vitejs/plugin-react-swc": "^4",
+    "@vitejs/plugin-react-swc": "^4.3.0",
     "tailwindcss": "^4",
     "vite": "^7"
   }
