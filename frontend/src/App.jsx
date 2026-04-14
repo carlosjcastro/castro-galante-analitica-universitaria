@@ -9,6 +9,7 @@ import DisclaimerModal from "./components/ui/DisclaimerModal";
 export default function App() {
   return (
     <>
+      <DisclaimerModal githubUrl="https://github.com/carlosjcastro/castro-galante-analitica-universitaria/blob/main/analitica-notebooks/notebooks/castro_galante_analitica_u_ejecutado.ipynb" />
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
