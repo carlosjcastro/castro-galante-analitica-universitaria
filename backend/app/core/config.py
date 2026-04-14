@@ -18,7 +18,6 @@ _default_origins = ','.join([
     'https://castro-galante-analitica.carlosjcastrog.com',
     'https://carlosjcastrog.com',
     'https://www.carlosjcastrog.com',
-    'https://castro-galante-analitica-universitaria-castro-galante-analitica.up.railway.app',
 ])
 
 FRONTEND_ORIGINS = os.getenv('FRONTEND_ORIGINS', _default_origins).split(',')
